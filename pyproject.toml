@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pyshell_mkerle"
+version = "0.0.1"
+authors = [
+  { name="Mitch Kerle", email="mitch.kerle@gmail.com" },
+]
+description = "Expands on the native python cmd module to provide dynamic creation of commands at runtime."
+readme = "README.md"
+requires-python = ">=3.7"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+
+[project.urls]
+"Homepage" = "https://github.com/mkerle/pyshell"
+"Bug Tracker" = "https://github.com/mkerle/pyshell/issues"
