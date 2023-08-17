@@ -1,5 +1,6 @@
 
 from cmd import Cmd
+import copy
 
 class PyShell(Cmd):
 
@@ -36,6 +37,65 @@ class PyShell(Cmd):
         '''
         return dir(self)
 
+    def _merge(self, currentDefinitions : list, newDefinitions : list) -> dict:
+        
+        mergedDefinitionPointer = None
+        for newChildDefinition in newDefinitions:
+            foundDefinition = False            
+            for currentChildDefinition in currentDefinitions:                
+                mergedDefinitionPointer = currentChildDefinition
+                newChildDefinitionType = self.getCommandDefinitionType(newChildDefinition)
+                if (newChildDefinitionType == self.getCommandDefinitionType(currentChildDefinition)):
+                    if (newChildDefinitionType == self.COMMAND_TYPE_STATIC):
+                        if (self.getCommandName(newChildDefinition) == self.getCommandName(currentChildDefinition)):
+                            foundDefinition = True
+                            break
+                    elif (newChildDefinitionType == self.COMMAND_TYPE_DYANMIC_SOURCE):
+                        newChildDefintionSourceType = self.getDynamicSourceType(newChildDefinition)
+                        if (newChildDefintionSourceType == self.getDynamicSourceType(currentChildDefinition)):
+                            if (self.getFunctionVariableName(newChildDefinition) == self.getFunctionVariableName(currentChildDefinition)):                                    
+
+                                if (newChildDefintionSourceType == self.COMMAND_SOURCE_TYPE_LITERAL):
+                                    mergedDataDynamicSource = self.getDynamicSourceData(mergedDefinitionPointer)
+                                    for cmd in self.getDynamicSourceData(newChildDefinition):
+                                        if (cmd not in mergedDataDynamicSource):
+                                            mergedDataDynamicSource.append(cmd)
+
+                                foundDefinition = True
+                                break                                
+                    elif (newChildDefinitionType == self.COMMAND_TYPE_USER_INPUT):
+                        if (self.getFunctionVariableName(newChildDefinition) == self.getFunctionVariableName(currentChildDefinition)):
+                            foundDefinition = True
+                            break                
+
+            if (foundDefinition):
+                newCommandChilderen = self.getCommandChilderen(newChildDefinition)
+                if (newCommandChilderen is not None):
+                    currentCommandChilderen = self.getCommandChilderen(currentChildDefinition)
+                    if (currentCommandChilderen is not None):
+                        mergedDefinitionPointer = self._merge(currentCommandChilderen, newCommandChilderen)
+                    else:
+                        mergedDefinitionPointer[self.FIELD_COMMAND_CHILDEREN] = copy.deepcopy(newCommandChilderen)
+            else:
+                currentDefinitions.append(copy.deepcopy(newChildDefinition))
+
+        return currentDefinitions
+
+
+    def mergeDefinitions(self, definition1, definition2) -> dict:
+
+        mergedDefinition = copy.deepcopy(definition1)
+        mergedChilderen = self._getDefinitionRoot(mergedDefinition)
+
+        mergedChilderen = self._merge(mergedChilderen, self._getDefinitionRoot(definition2))
+
+        return mergedDefinition
+
+    def addDefinition(self, newDefinition):
+
+        self.definition = self.mergeDefinitions(self.definition, newDefinition)
+        self.parseDefinition(self.definition)
+
     def parseDefinition(self, definition : dict) -> dict:
 
         if (definition is None):
@@ -64,16 +124,30 @@ class PyShell(Cmd):
             return definition
         
         raise Exception('definition object does not contain field: %s' % (self.FIELD_DEFINITIONS))
+
+    def _getDefinitionRoot(self, localDefinition : dict) -> list:
+
+        if (self.FIELD_DEFINITIONS in localDefinition):
+            return localDefinition[self.FIELD_DEFINITIONS]
+
+        return None
     
     def getDefinitionRoot(self) -> list:
 
-        return self.definition[self.FIELD_DEFINITIONS]
+        return self._getDefinitionRoot(self.definition)
     
     def getCommandDefinitionType(self, localDefinition : dict) -> str:
 
         if (self.FIELD_COMMAND_TYPE in localDefinition):
             return localDefinition[self.FIELD_COMMAND_TYPE]
         
+        return None
+
+    def getCommandChilderen(self, localDefinition : dict) -> list:
+
+        if (self.FIELD_COMMAND_CHILDEREN in localDefinition):
+            return localDefinition[self.FIELD_COMMAND_CHILDEREN]
+
         return None
     
     def getCommandName(self, localDefinition : dict) -> str:
