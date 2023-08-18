@@ -116,7 +116,7 @@ class PyShell(Cmd):
                     completeFuncName = 'complete_' + cmdName                    
 
                     if (getattr(self, doFuncName, None) is None):
-                        setattr(self, doFuncName, lambda arg: self.doCommandDefinition(cmdName + ' ' + arg))
+                        setattr(self, doFuncName, lambda arg, cmdName=cmdName: self.doCommandDefinition(cmdName, arg))
 
                     if (getattr(self, completeFuncName, None) is None):
                         setattr(self, completeFuncName, self.completeCommandDefinition)
@@ -269,12 +269,12 @@ class PyShell(Cmd):
 
         return matches
     
-    def doCommandDefinition(self, arg : str):        
+    def doCommandDefinition(self, cmdName : str, arg : str):        
 
         funcArgs = {}
         func = None
 
-        cmdParts = self._parsePartialCommandLine(arg)
+        cmdParts = self._parsePartialCommandLine(cmdName + ' ' + arg)
 
         definitionPath = self.getDefinitionRoot()
         for cmdPart in cmdParts:
