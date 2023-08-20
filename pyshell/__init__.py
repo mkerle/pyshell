@@ -1,6 +1,7 @@
 
 from cmd import Cmd
 import copy
+from typing import Union, Tuple
 
 class PyShell(Cmd):
 
@@ -15,6 +16,8 @@ class PyShell(Cmd):
     FIELD_SOURCE_TYPE = 'source-type'
     FIELD_SOURCE = 'source'
     FIELD_VAR_NAME = 'var-name'
+    FIELD_HELP_TITLE = 'help-title'
+    FIELD_COMMAND_USAGES = 'cmd-usages'
 
     COMMAND_TYPE_STATIC = 'static'
     COMMAND_TYPE_DYANMIC_SOURCE = 'dynamic-source'
@@ -22,6 +25,9 @@ class PyShell(Cmd):
 
     COMMAND_SOURCE_TYPE_FUNCTION = 'function'
     COMMAND_SOURCE_TYPE_LITERAL = 'literal'
+
+    COMMAND_USAGE_DESCRIPTION = 'description'
+    COMMAND_USAGE_EXAMPLE = 'usage'
 
     def __init__(self, definition : dict = None, completekey='tab', stdin=None, stdout=None):
 
@@ -113,19 +119,23 @@ class PyShell(Cmd):
                         raise Exception('definition object for static command does not define a %s' % (self.FIELD_COMMAND_NAME))
                     
                     doFuncName = 'do_' + cmdName
-                    completeFuncName = 'complete_' + cmdName                    
+                    completeFuncName = 'complete_' + cmdName
+                    helpFuncName = 'help_' + cmdName
 
                     if (getattr(self, doFuncName, None) is None):
                         setattr(self, doFuncName, lambda arg, cmdName=cmdName: self.doCommandDefinition(cmdName, arg))
 
                     if (getattr(self, completeFuncName, None) is None):
                         setattr(self, completeFuncName, self.completeCommandDefinition)
+
+                    if (getattr(self, helpFuncName, None) is None):
+                        setattr(self, helpFuncName, lambda cmdName=cmdName: self.helpCommandDefinition(cmdName))
                     
             return definition
         
         raise Exception('definition object does not contain field: %s' % (self.FIELD_DEFINITIONS))
 
-    def _getDefinitionRoot(self, localDefinition : dict) -> list:
+    def _getDefinitionRoot(self, localDefinition : dict) -> Union[list, None]:
 
         if (self.FIELD_DEFINITIONS in localDefinition):
             return localDefinition[self.FIELD_DEFINITIONS]
@@ -136,35 +146,38 @@ class PyShell(Cmd):
 
         return self._getDefinitionRoot(self.definition)
     
-    def getCommandDefinitionType(self, localDefinition : dict) -> str:
+    def getCommandDefinitionType(self, localDefinition : dict) -> Union[str, None]:
 
         if (self.FIELD_COMMAND_TYPE in localDefinition):
             return localDefinition[self.FIELD_COMMAND_TYPE]
         
         return None
 
-    def getCommandChilderen(self, localDefinition : dict) -> list:
-
+    def getCommandChilderen(self, localDefinition : dict) -> Union[list, None]:
+        '''
+        Checks if localDefinition has child command definitions and returns the 
+        list if it exists.  Returns None if no child definitions exist.
+        '''
         if (self.FIELD_COMMAND_CHILDEREN in localDefinition):
             return localDefinition[self.FIELD_COMMAND_CHILDEREN]
 
         return None
     
-    def getCommandName(self, localDefinition : dict) -> str:
+    def getCommandName(self, localDefinition : dict) -> Union[str, None]:
 
         if (self.FIELD_COMMAND_NAME in localDefinition):
             return localDefinition[self.FIELD_COMMAND_NAME]
         
         return None
         
-    def getDynamicSourceType(self, localDefinition : dict) -> str:
+    def getDynamicSourceType(self, localDefinition : dict) -> Union[str, None]:
 
         if (self.FIELD_SOURCE_TYPE in localDefinition):
             return localDefinition[self.FIELD_SOURCE_TYPE]
         
         return None
     
-    def getDynamicSource(self, localDefinition : dict) -> str:
+    def getDynamicSource(self, localDefinition : dict) -> Union[str, None]:
 
         if (self.FIELD_SOURCE in localDefinition):
             return localDefinition[self.FIELD_SOURCE]
@@ -202,6 +215,28 @@ class PyShell(Cmd):
 
         if (self.FIELD_VAR_NAME in localDefinition):
             return localDefinition[self.FIELD_VAR_NAME]
+        
+        return None
+    
+    def getCommandHelpTitle(self, localDefinition) -> str:
+        '''
+        Checks if the help-title is defined in localDefinition.
+        If it is the value is returned otherwise an empty str is returned.
+        '''
+
+        if (self.FIELD_HELP_TITLE in localDefinition):
+            return localDefinition[self.FIELD_HELP_TITLE]
+        
+        return ''
+    
+    def getCommandUsages(self, localDefinition) -> Union[list, None]:
+        '''
+        Checks if localDefinition has command usage help and returns the 
+        list if it exists.  Returns None if no command usages exist.        
+        '''
+
+        if (self.FIELD_COMMAND_USAGES in localDefinition):
+            return localDefinition[self.FIELD_COMMAND_USAGES]
         
         return None
     
@@ -319,4 +354,87 @@ class PyShell(Cmd):
                     definitionPath = matchedDefinition[self.FIELD_COMMAND_CHILDEREN]
 
         func(**funcArgs)
+
+    def _appendCommandUsageFromDefinition(self, cmdUsage : dict, commandUsages : list) -> list:
+        '''
+        Takes cmdUsage which is a dict of the form 
+        { 'description' : 'This command does blah, 'usage' : 'execute blah' }
+        and turns it into a tuple.  Appends it to the commandUsages list and returns
+        the update llist.
+        '''
+
+        if (self.COMMAND_USAGE_DESCRIPTION in cmdUsage):
+            if (self.COMMAND_USAGE_EXAMPLE in cmdUsage):
+                usage = (cmdUsage[self.COMMAND_USAGE_DESCRIPTION], cmdUsage[self.COMMAND_USAGE_EXAMPLE])
+                commandUsages.append(usage)
+
+            else:
+                raise Exception('Command usage does not define %s' % (self.COMMAND_USAGE_EXAMPLE))
+            
+        else:
+            raise Exception('Command usage does not define %s' % (self.COMMAND_USAGE_DESCRIPTION))
+        
+        return commandUsages
+    
+    def _appendCommandUsagesFromDefinition(self, newCommandUsages : list, commandUsages : list) -> list:
+        '''
+        Takes a list of command usage help (newCommandUsages) and appends to commandUsages
+        '''
+        for newCommandUsage in newCommandUsages:
+            commandUsages = self._appendCommandUsageFromDefinition(newCommandUsage, commandUsages)
+
+        return commandUsages
+
+
+    def _getHelpCommandUsageFromDefinition(self, childDefinitions : list, commandUsages : list) -> list:
+        
+        for childDefinition in childDefinitions:
+
+            childDefinitions = self.getCommandChilderen(childDefinition)
+            if (childDefinitions is not None):
+                commandUsages = self._getHelpCommandUsageFromDefinition(childDefinitions, commandUsages)
+
+            usages = self.getCommandUsages(childDefinition)
+            if (usages is not None):
+                commandUsages = self._appendCommandUsagesFromDefinition(usages, commandUsages)
+
+        return commandUsages
+    
+    def _displayHelp(self, helpTitle : str, commandUsages : list):
+
+        print('\n\n%s' % (helpTitle))
+
+        if (self.ruler):
+            print('%s' % (self.ruler * len(helpTitle)))
+
+        for cmdUsage in commandUsages:
+            print('\n%s' % (cmdUsage[0]))
+            print('\t%s' % (cmdUsage[1]))
+
+        print()
+
+    def helpCommandDefinition(self, cmdName : str):
+
+        helpTitle = ''
+        commandUsages = []
+        for childDefinition in self.getDefinitionRoot():
+            if (self.getCommandDefinitionType(childDefinition) == self.COMMAND_TYPE_STATIC):
+                childDefinitionCmdName = self.getCommandName(childDefinition)
+
+                if (cmdName == childDefinitionCmdName):
+
+                    helpTitle = self.getCommandHelpTitle(childDefinition)
+
+                    childDefinitions = self.getCommandChilderen(childDefinition)
+                    if (childDefinitions is not None):
+                        commandUsages = self._getHelpCommandUsageFromDefinition(childDefinitions, commandUsages)
+
+                    usages = self.getCommandUsages(childDefinition)
+                    if (usages is not None):
+                        commandUsages = self._appendCommandUsagesFromDefinition(usages, commandUsages)
+
+        
+        self._displayHelp(helpTitle, commandUsages)
+        
+
     

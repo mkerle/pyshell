@@ -31,7 +31,14 @@ class testPyShell(TestCase):
             'definitions' : [
                 {
                     "cmd-name" : "add",
-                    "cmd-type" : "static",                    
+                    "cmd-type" : "static",
+                    "help-title" : "Add stuff to some management platform",
+                    "cmd-usages" : [
+                        {
+                            "description" : "add a policy usage the specified template",
+                            "usage" : "add policy device <deviceName> sitecode <sitecode> template <templateName>"
+                        }
+                    ],
                     "cmd-childeren" : [
                         {
                             "cmd-name" : "policy",
@@ -88,7 +95,8 @@ class testPyShell(TestCase):
             'definitions' : [
                 {
                     "cmd-name" : "add",
-                    "cmd-type" : "static",                    
+                    "cmd-type" : "static",
+                    "help-title" : "Add stuff to some management platform",
                     "cmd-childeren" : [
                         {
                             "cmd-name" : "policy",
@@ -115,7 +123,13 @@ class testPyShell(TestCase):
                                                             "cmd-childeren" : [
                                                                 {
                                                                     "cmd-name" : "template",
-                                                                    "cmd-type" : "static",                                                                
+                                                                    "cmd-type" : "static",
+                                                                    "cmd-usages" : [
+                                                                        {
+                                                                            "description" : "add a policy usage the specified template",
+                                                                            "usage" : "add policy device <deviceName> sitecode <sitecode> template <templateName>"
+                                                                        }
+                                                                    ],
                                                                     "cmd-childeren" : [
                                                                         {                                                                            
                                                                             "cmd-type" : "dynamic-source",                                                                
@@ -129,7 +143,13 @@ class testPyShell(TestCase):
                                                                 {
                                                                     "cmd-name" : "dynamic-interfaces",
                                                                     "cmd-type" : "static",
-                                                                    "on-execute" : "handleAddDynamicInterfaces"
+                                                                    "on-execute" : "handleAddDynamicInterfaces",
+                                                                    "cmd-usages" : [
+                                                                        {
+                                                                            "description" : "add a dynamic interfaces for the specified device",
+                                                                            "usage" : "add policy device <deviceName> sitecode <sitecode> dynamic-interfaces"
+                                                                        }
+                                                                    ],
                                                                 }
                                                             ]
                                                         }
