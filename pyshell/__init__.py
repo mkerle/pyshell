@@ -1,5 +1,7 @@
 
 from cmd import Cmd
+import sys
+import traceback
 import copy
 from typing import Union, Tuple
 
@@ -353,7 +355,11 @@ class PyShell(Cmd):
                 if (self.FIELD_COMMAND_CHILDEREN in matchedDefinition):
                     definitionPath = matchedDefinition[self.FIELD_COMMAND_CHILDEREN]
 
-        func(**funcArgs)
+        try:
+            func(**funcArgs)
+        except Exception as e:
+            exc_type, exc_value, exc_traceback = sys.exc_info()
+            traceback.print_exception(exc_type, exc_value, exc_traceback)
 
     def _appendCommandUsageFromDefinition(self, cmdUsage : dict, commandUsages : list) -> list:
         '''
